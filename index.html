@@ -12,15 +12,20 @@
     arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
   >
     <a-camera gps-camera rotation-reader></a-camera>
-
-    <!-- Windrad-Platzhalter: roter Zylinder, 100m hoch -->
-    <a-cylinder
-      gps-entity-place="latitude: 47.9788; longitude: 11.4496"
-      color="red"
-      radius="5"
-      height="100"
-      opacity="0.8"
-    ></a-cylinder>
+    
+<!-- Windrad -->
+<a-entity gps-entity-place="latitude: 47.973; longitude: 11.420">
+  <!-- Turm -->
+  <a-cylinder color="white" radius="2" height="100" position="0 50 0"></a-cylinder>
+  <!-- Gondel -->
+  <a-box color="gray" width="8" height="5" depth="5" position="0 103 0"></a-box>
+  <!-- Blatt 1 -->
+  <a-box color="white" width="1.5" height="45" depth="0.5" position="0 126 0"></a-box>
+  <!-- Blatt 2 -->
+  <a-box color="white" width="1.5" height="45" depth="0.5" position="0 126 0" rotation="0 0 120"></a-box>
+  <!-- Blatt 3 -->
+  <a-box color="white" width="1.5" height="45" depth="0.5" position="0 126 0" rotation="0 0 240"></a-box>
+</a-entity>
 
   </a-scene>
 </body>
