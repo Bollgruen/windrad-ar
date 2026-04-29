@@ -74,17 +74,24 @@
     function placeWindrad() {
       if (windradPlaced) return;
       if (windradElevation === null || userElevation === null) return;
-
+    
       const elevationDiff = windradElevation - userElevation;
-
-      document.querySelector('a-scene').addEventListener('loaded', () => {
+      const scene = document.querySelector('a-scene');
+    
+      const doPlace = () => {
         document.querySelector('#windrad-entity').setAttribute(
           'gps-entity-place',
           `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}; altitude: ${elevationDiff}`
         );
         windradPlaced = true;
-        console.log(`Windrad Höhe: ${windradElevation}m, User: ${userElevation}m, Diff: ${elevationDiff}m`);
-      });
+      };
+    
+      // Szene schon geladen? Direkt setzen. Sonst warten.
+      if (scene.hasLoaded) {
+        doPlace();
+      } else {
+        scene.addEventListener('loaded', doPlace);
+      }
     }
 
     // Windrad-Elevation sofort beim Laden holen
