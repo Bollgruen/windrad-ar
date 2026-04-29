@@ -58,11 +58,13 @@
   <div id="status">📍 GPS: warte...</div>
 
   <script>
-    const WINDRAD = { lat: 47.9789, lng: 11.4495 }; // deine Koordinaten!
+      const WINDRAD = { lat: 47.9789, lng: 11.4495 };
+      document.querySelector('a-scene').addEventListener('loaded', () => {
         document.querySelector('#windrad-entity').setAttribute(
-        'gps-entity-place', 
-        `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}`
+          'gps-entity-place',
+          `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}`
         );
+      });
     const map = L.map('minimap', {
       zoomControl: false,
       attributionControl: false,
