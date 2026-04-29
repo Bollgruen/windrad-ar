@@ -35,13 +35,11 @@
 </head>
 <body style="margin:0; overflow:hidden;">
 
-  <!-- AR Szene -->
   <a-scene
     vr-mode-ui="enabled: false"
     arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
   >
     <a-camera gps-camera rotation-reader></a-camera>
-
     <a-entity id="windrad-entity">
       <a-cylinder color="white" radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
       <a-box color="gray" width="10" height="6" depth="6" position="0 178 0"></a-box>
@@ -51,20 +49,58 @@
     </a-entity>
   </a-scene>
 
-  <!-- Minimap -->
   <div id="minimap"></div>
-
-  <!-- Status -->
   <div id="status">📍 GPS: warte...</div>
 
   <script>
-      const WINDRAD = { lat: 47.9789, lng: 11.4495 };
+    // ── NUR HIER ÄNDERN ──────────────────────────────
+    const WINDRAD = { lat: 47.9789, lng: 11.4495 };
+    // ────────────────────────────────────────────────
+
+    let windradElevation = null;
+    let userElevation = null;
+    let windradPlaced = false;
+
+    // Höhe des Windrad-Standorts von API holen
+    async function getElevation(lat, lng) {
+      const res = await fetch(
+        `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`
+      );
+      const data = await res.json();
+      return data.results[0].elevation;
+    }
+
+    // Windrad platzieren sobald beide Höhen bekannt sind
+    function placeWindrad() {
+      if (windradPlaced) return;
+      if (windradElevation === null || userElevation === null) return;
+
+      const elevationDiff = windradElevation - userElevation;
+
       document.querySelector('a-scene').addEventListener('loaded', () => {
         document.querySelector('#windrad-entity').setAttribute(
           'gps-entity-place',
-          `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}`
+          `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}; altitude: ${elevationDiff}`
         );
+        windradPlaced = true;
+        console.log(`Windrad Höhe: ${windradElevation}m, User: ${userElevation}m, Diff: ${elevationDiff}m`);
       });
+    }
+
+    // Windrad-Elevation sofort beim Laden holen
+    getElevation(WINDRAD.lat, WINDRAD.lng).then(elev => {
+      windradElevation = elev;
+      document.getElementById('status').innerHTML += `<br>⛰️ Windrad-Standort: ${elev}m ü.M.`;
+      placeWindrad();
+    }).catch(() => {
+      document.getElementById('status').innerHTML += `<br>⚠️ Elevation API nicht erreichbar`;
+      // Fallback: kein Höhenoffset
+      windradElevation = 0;
+      userElevation = 0;
+      placeWindrad();
+    });
+
+    // ── MINIMAP ─────────────────────────────────────
     const map = L.map('minimap', {
       zoomControl: false,
       attributionControl: false,
@@ -75,7 +111,6 @@
     }).setView([WINDRAD.lat, WINDRAD.lng], 14);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
     const windradIcon = L.divIcon({ html: '🌀', iconSize: [24,24], className: '' });
     L.marker([WINDRAD.lat, WINDRAD.lng], { icon: windradIcon }).addTo(map);
 
@@ -111,8 +146,7 @@
           border-bottom: 22px solid #007aff;
           transform: rotate(${deg}deg);
           transform-origin: 50% 100%;
-          position: relative;
-          top: -11px;
+          position: relative; top: -11px;
         "></div>`,
         iconSize: [16, 22],
         iconAnchor: [8, 11],
@@ -133,21 +167,37 @@
 
     // GPS
     navigator.geolocation.watchPosition(pos => {
-      const { latitude, longitude, accuracy } = pos.coords;
+      const { latitude, longitude, accuracy, altitude } = pos.coords;
+
+      // User-Elevation: GPS-Wert wenn vorhanden, sonst API
+      if (userElevation === null) {
+        if (altitude !== null) {
+          userElevation = altitude;
+          placeWindrad();
+        } else {
+          getElevation(latitude, longitude).then(elev => {
+            userElevation = elev;
+            placeWindrad();
+          });
+        }
+      }
 
       const bearing = bearingTo(latitude, longitude, WINDRAD.lat, WINDRAD.lng);
       const distance = distanceTo(latitude, longitude, WINDRAD.lat, WINDRAD.lng);
       const diff = Math.round(((bearing - heading + 540) % 360) - 180);
       const hinweis = Math.abs(diff) < 20 ? '✅ Blickrichtung passt!' :
-                      diff > 0 ? `➡️ ${Math.abs(diff)}° nach rechts drehen` :
-                                 `⬅️ ${Math.abs(diff)}° nach links drehen`;
+                      diff > 0 ? `➡️ ${Math.abs(diff)}° nach rechts` :
+                                 `⬅️ ${Math.abs(diff)}° nach links`;
+
+      const elevDiff = windradElevation !== null && userElevation !== null
+        ? `⛰️ Höhenunterschied: ${Math.round(windradElevation - userElevation)}m<br>` : '';
 
       document.getElementById('status').innerHTML =
         `📍 GPS ±${Math.round(accuracy)}m<br>` +
         `📏 Windrad: ${distance}m entfernt<br>` +
-        `🧭 Windrad ist bei: ${Math.round(bearing)}°<br>` +
-        `👁️ Du schaust: ${Math.round(heading)}°<br>` +
-        `${hinweis}`;
+        `🧭 Windrad bei: ${Math.round(bearing)}° | Du: ${Math.round(heading)}°<br>` +
+        elevDiff +
+        hinweis;
 
       if (!userMarker) {
         userMarker = L.marker([latitude, longitude], { icon: makeUserIcon(heading) }).addTo(map);
@@ -167,6 +217,5 @@
       document.getElementById('status').innerHTML = `❌ GPS Fehler: ${err.message}`;
     }, { enableHighAccuracy: true, maximumAge: 0 });
   </script>
-
 </body>
 </html>
