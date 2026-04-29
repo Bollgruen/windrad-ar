@@ -219,13 +219,32 @@
       else scene.addEventListener('loaded', doPlace);
     }
 
-    async function startAR() {
+async function startAR() {
+      // Reset für Neu-Platzierung
+      windradPlaced = false;
+      windradElevation = null;
+      userElevation = null;
+    
       document.getElementById('map-screen').style.display = 'none';
       document.getElementById('ar-screen').style.display = 'block';
-
-      // Elevation holen
+    
+      // Koordinaten sofort direkt setzen (A-Scene läuft schon)
+      const scene = document.querySelector('a-scene');
+      const doPlace = () => {
+        document.querySelector('#windrad-entity').setAttribute(
+          'gps-entity-place',
+          `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}; altitude: 0`
+        );
+        windradPlaced = true;
+      };
+      if (scene.hasLoaded) doPlace();
+      else scene.addEventListener('loaded', doPlace);
+    
+      // Dann Elevation nachholen und korrigieren
       try {
         windradElevation = await getElevation(WINDRAD.lat, WINDRAD.lng);
+        windradPlaced = false; // nochmal setzen mit korrekter Höhe
+        placeWindrad();
       } catch {
         windradElevation = 0;
       }
