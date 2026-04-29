@@ -18,9 +18,7 @@
       display: flex;
       flex-direction: column;
     }
-    #picker-map {
-      flex: 1;
-    }
+    #picker-map { flex: 1; }
     #map-toolbar {
       background: #1c1c1e;
       padding: 10px 12px;
@@ -28,10 +26,7 @@
       flex-direction: column;
       gap: 8px;
     }
-    #search-row {
-      display: flex;
-      gap: 8px;
-    }
+    #search-row { display: flex; gap: 8px; }
     #search-input {
       flex: 1;
       padding: 8px 12px;
@@ -66,11 +61,7 @@
       font-weight: bold;
       display: none;
     }
-    #hint {
-      color: #888;
-      font-size: 13px;
-      text-align: center;
-    }
+    #hint { color: #888; font-size: 13px; text-align: center; }
 
     /* ── AR SCREEN ── */
     #minimap {
@@ -95,18 +86,6 @@
       font-size: 13px;
       z-index: 9999;
     }
-    #change-btn {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 13px;
-      z-index: 9999;
-    }
   </style>
 </head>
 <body>
@@ -125,7 +104,7 @@
     </div>
   </div>
 
-  <!-- AR SCREEN (versteckt bis OK) -->
+  <!-- AR SCREEN -->
   <div id="ar-screen" style="display:none;">
     <a-scene
       vr-mode-ui="enabled: false"
@@ -133,16 +112,36 @@
     >
       <a-camera gps-camera rotation-reader></a-camera>
       <a-entity id="windrad-entity">
+
+        <!-- Turm -->
         <a-cylinder color="white" radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
+
+        <!-- Gondel -->
         <a-box color="gray" width="10" height="6" depth="6" position="0 178 0"></a-box>
-        <a-box color="white" width="2" height="86" depth="0.8" position="0 221 0"></a-box>
-        <a-box color="white" width="2" height="86" depth="0.8" position="0 221 0" rotation="0 0 120"></a-box>
-        <a-box color="white" width="2" height="86" depth="0.8" position="0 221 0" rotation="0 0 240"></a-box>
+
+        <!-- Rotor: Wrapper am Nabenmittelpunkt -->
+        <a-entity position="0 178 0">
+
+          <!-- Blatt 1: gerade nach oben -->
+          <a-entity rotation="0 0 0">
+            <a-box color="white" width="2" height="86" depth="0.8" position="0 43 0"></a-box>
+          </a-entity>
+
+          <!-- Blatt 2: 120° gedreht -->
+          <a-entity rotation="0 0 120">
+            <a-box color="white" width="2" height="86" depth="0.8" position="0 43 0"></a-box>
+          </a-entity>
+
+          <!-- Blatt 3: 240° gedreht -->
+          <a-entity rotation="0 0 240">
+            <a-box color="white" width="2" height="86" depth="0.8" position="0 43 0"></a-box>
+          </a-entity>
+
+        </a-entity>
       </a-entity>
     </a-scene>
     <div id="minimap"></div>
     <div id="status">📍 GPS: warte...</div>
-    <button id="change-btn">📍 Neu platzieren</button>
   </div>
 
   <script>
@@ -156,7 +155,6 @@
     const pickerMap = L.map('picker-map').setView([47.97, 11.45], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(pickerMap);
 
-    // Eigene Position zentrieren
     navigator.geolocation.getCurrentPosition(pos => {
       pickerMap.setView([pos.coords.latitude, pos.coords.longitude], 14);
     });
@@ -164,10 +162,8 @@
     pickerMap.on('click', e => {
       const { lat, lng } = e.latlng;
       WINDRAD = { lat, lng };
-
       if (pickerMarker) pickerMarker.setLatLng([lat, lng]);
       else pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
-
       document.getElementById('coords-display').textContent =
         `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       document.getElementById('ok-btn').style.display = 'block';
@@ -180,23 +176,14 @@
       if (!q) return;
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`);
       const data = await res.json();
-      if (data.length > 0) {
-        pickerMap.setView([data[0].lat, data[0].lon], 15);
-      } else {
-        alert('Ort nicht gefunden');
-      }
+      if (data.length > 0) pickerMap.setView([data[0].lat, data[0].lon], 15);
+      else alert('Ort nicht gefunden');
     });
     document.getElementById('search-input').addEventListener('keyup', e => {
       if (e.key === 'Enter') document.getElementById('search-btn').click();
     });
 
-    // ── OK → AR STARTEN ─────────────────────────────
-    document.getElementById('ok-btn').addEventListener('click', startAR);
-    document.getElementById('change-btn').addEventListener('click', () => {
-      document.getElementById('ar-screen').style.display = 'none';
-      document.getElementById('map-screen').style.display = 'flex';
-    });
-
+    // ── ELEVATION ───────────────────────────────────
     async function getElevation(lat, lng) {
       const res = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
       const data = await res.json();
@@ -219,38 +206,20 @@
       else scene.addEventListener('loaded', doPlace);
     }
 
-async function startAR() {
-      // Reset für Neu-Platzierung
-      windradPlaced = false;
-      windradElevation = null;
-      userElevation = null;
-    
+    // ── OK → AR STARTEN ─────────────────────────────
+    document.getElementById('ok-btn').addEventListener('click', async () => {
       document.getElementById('map-screen').style.display = 'none';
       document.getElementById('ar-screen').style.display = 'block';
-    
-      // Koordinaten sofort direkt setzen (A-Scene läuft schon)
-      const scene = document.querySelector('a-scene');
-      const doPlace = () => {
-        document.querySelector('#windrad-entity').setAttribute(
-          'gps-entity-place',
-          `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}; altitude: 0`
-        );
-        windradPlaced = true;
-      };
-      if (scene.hasLoaded) doPlace();
-      else scene.addEventListener('loaded', doPlace);
-    
-      // Dann Elevation nachholen und korrigieren
+
+      // Windrad-Elevation holen
       try {
         windradElevation = await getElevation(WINDRAD.lat, WINDRAD.lng);
-        windradPlaced = false; // nochmal setzen mit korrekter Höhe
-        placeWindrad();
       } catch {
         windradElevation = 0;
       }
       placeWindrad();
 
-      // ── MINIMAP ────────────────────────────────────
+      // ── MINIMAP ─────────────────────────────────
       const map = L.map('minimap', {
         zoomControl: false, attributionControl: false,
         dragging: false, scrollWheelZoom: false,
@@ -307,9 +276,17 @@ async function startAR() {
       navigator.geolocation.watchPosition(pos => {
         const { latitude, longitude, accuracy, altitude } = pos.coords;
 
+        // User-Elevation
         if (userElevation === null) {
-          userElevation = altitude ?? 0;
-          placeWindrad();
+          if (altitude !== null) {
+            userElevation = altitude;
+            placeWindrad();
+          } else {
+            getElevation(latitude, longitude).then(elev => {
+              userElevation = elev;
+              placeWindrad();
+            });
+          }
         }
 
         const bearing = bearingTo(latitude, longitude, WINDRAD.lat, WINDRAD.lng);
@@ -319,7 +296,8 @@ async function startAR() {
                         diff > 0 ? `➡️ ${Math.abs(diff)}° nach rechts` :
                                    `⬅️ ${Math.abs(diff)}° nach links`;
         const elevDiff = windradElevation !== null && userElevation !== null
-          ? `⛰️ Windrad: ${Math.round(windradElevation)}m | Du: ${Math.round(userElevation)}m | Diff: ${Math.round(windradElevation - userElevation)}m<br>` : '';
+          ? `⛰️ Windrad: ${Math.round(windradElevation)}m | Du: ${Math.round(userElevation)}m | Diff: ${Math.round(windradElevation - userElevation)}m<br>`
+          : '';
 
         document.getElementById('status').innerHTML =
           `📍 GPS ±${Math.round(accuracy)}m<br>` +
@@ -343,7 +321,7 @@ async function startAR() {
       }, err => {
         document.getElementById('status').innerHTML = `❌ GPS Fehler: ${err.message}`;
       }, { enableHighAccuracy: true, maximumAge: 0 });
-    }
+    });
   </script>
 </body>
 </html>
