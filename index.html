@@ -1,32 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Windrad AR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Windrad AR</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    #minimap {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      width: 180px;
+      height: 180px;
+      border: 2px solid white;
+      border-radius: 8px;
+      overflow: hidden;
+      z-index: 9999;
+    }
+    #status {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      font-size: 13px;
+      z-index: 9999;
+    }
+  </style>
 </head>
 <body style="margin:0; overflow:hidden;">
+
+  <!-- AR Szene -->
   <a-scene
     vr-mode-ui="enabled: false"
     arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
   >
     <a-camera gps-camera rotation-reader></a-camera>
-    
-<!-- Windrad -->
-<a-entity gps-entity-place="latitude: 47.720; longitude: 9.918">
-<!-- Turm -->
-<a-cylinder color="white" radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
-<!-- Gondel -->
-<a-box color="gray" width="10" height="6" depth="6" position="0 178 0"></a-box>
-<!-- Blatt 1 -->
-<a-box color="white" width="2" height="86" depth="0.8" position="0 221 0"></a-box>
-<!-- Blatt 2 -->
-<a-box color="white" width="2" height="86" depth="0.8" position="0 221 0" rotation="0 0 120"></a-box>
-<!-- Blatt 3 -->
-<a-box color="white" width="2" height="86" depth="0.8" position="0 221 0" rotation="0 0 240"></a-box>
-</a-entity>
-    
+
+    <a-entity gps-entity-place="latitude: 47.973; longitude: 11.420">
+      <a-cylinder color="white" radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
+      <a-box color="gray" width="10" height="6" depth="6" position="0 178 0"></a-box>
+      <a-box color="white" width="2" height="86" depth="0.8" position="0 221 0"></a-box>
+      <a-box color="white" width="2" height="86" depth="0.8" position="0 221 0" rotation="0 0 120"></a-box>
+      <a-box color="white" width="2" height="86" depth="0.8" position="0 221 0" rotation="0 0 240"></a-box>
+    </a-entity>
   </a-scene>
+
+  <!-- Minimap -->
+  <div id="minimap"></div>
+
+  <!-- Status -->
+  <div id="status">📍 GPS: warte...</div>
+
+  <script>
+    const WINDRAD = { lat: 47.9789, lng: 11.4495 };
+
+    // Leaflet Minimap
+    const map = L.map('minimap', {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false
+    }).setView([WINDRAD.lat, WINDRAD.lng], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Windrad Marker
+    const windradIcon = L.divIcon({ html: '🌀', iconSize: [24,24], className: '' });
+    L.marker([WINDRAD.lat, WINDRAD.lng], { icon: windradIcon }).addTo(map);
+
+    // User Marker
+    const userIcon = L.divIcon({ html: '📍', iconSize: [24,24], className: '' });
+    let userMarker = null;
+    let line = null;
+
+    navigator.geolocation.watchPosition(pos => {
+      const { latitude, longitude, accuracy } = pos.coords;
+
+      // Status updaten
+      document.getElementById('status').innerHTML =
+        `📍 GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}<br>` +
+        `🎯 Genauigkeit: ±${Math.round(accuracy)}m`;
+
+      // User Marker setzen
+      if (!userMarker) {
+        userMarker = L.marker([latitude, longitude], { icon: userIcon }).addTo(map);
+      } else {
+        userMarker.setLatLng([latitude, longitude]);
+      }
+
+      // Linie zwischen User und Windrad
+      if (line) map.removeLayer(line);
+      line = L.polyline([[latitude, longitude], [WINDRAD.lat, WINDRAD.lng]],
+        { color: 'red', weight: 2 }).addTo(map);
+
+      // Karte zentrieren zwischen beiden Punkten
+      map.fitBounds([[latitude, longitude], [WINDRAD.lat, WINDRAD.lng]],
+        { padding: [20, 20] });
+
+    }, err => {
+      document.getElementById('status').innerHTML = `❌ GPS Fehler: ${err.message}`;
+    }, {
+      enableHighAccuracy: true,
+      maximumAge: 0
+    });
+  </script>
+
 </body>
 </html>
