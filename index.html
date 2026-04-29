@@ -58,9 +58,8 @@
   <div id="status">📍 GPS: warte...</div>
 
   <script>
-    const WINDRAD = { lat: 47.9789, lng: 11.4495 };
+    const WINDRAD = { lat: 47.973, lng: 11.420 }; // deine Koordinaten!
 
-    // Leaflet Minimap
     const map = L.map('minimap', {
       zoomControl: false,
       attributionControl: false,
@@ -72,45 +71,96 @@
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Windrad Marker
     const windradIcon = L.divIcon({ html: '🌀', iconSize: [24,24], className: '' });
     L.marker([WINDRAD.lat, WINDRAD.lng], { icon: windradIcon }).addTo(map);
 
-    // User Marker
-    const userIcon = L.divIcon({ html: '📍', iconSize: [24,24], className: '' });
     let userMarker = null;
     let line = null;
+    let heading = 0;
 
+    function bearingTo(lat1, lng1, lat2, lng2) {
+      const toRad = d => d * Math.PI / 180;
+      const dLng = toRad(lng2 - lng1);
+      const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function distanceTo(lat1, lng1, lat2, lng2) {
+      const R = 6371000;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLng = toRad(lng2 - lng1);
+      const a = Math.sin(dLat/2)**2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
+
+    function makeUserIcon(deg) {
+      return L.divIcon({
+        html: `<div style="
+          width:0; height:0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-bottom: 22px solid #007aff;
+          transform: rotate(${deg}deg);
+          transform-origin: 50% 100%;
+          position: relative;
+          top: -11px;
+        "></div>`,
+        iconSize: [16, 22],
+        iconAnchor: [8, 11],
+        className: ''
+      });
+    }
+
+    // Kompass
+    window.addEventListener('deviceorientationabsolute', e => {
+      if (e.alpha !== null) heading = (360 - e.alpha) % 360;
+      if (userMarker) userMarker.setIcon(makeUserIcon(heading));
+    });
+    window.addEventListener('deviceorientation', e => {
+      if (e.webkitCompassHeading !== undefined) heading = e.webkitCompassHeading;
+      else if (e.alpha !== null) heading = (360 - e.alpha) % 360;
+      if (userMarker) userMarker.setIcon(makeUserIcon(heading));
+    });
+
+    // GPS
     navigator.geolocation.watchPosition(pos => {
       const { latitude, longitude, accuracy } = pos.coords;
 
-      // Status updaten
-      document.getElementById('status').innerHTML =
-        `📍 GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}<br>` +
-        `🎯 Genauigkeit: ±${Math.round(accuracy)}m`;
+      const bearing = bearingTo(latitude, longitude, WINDRAD.lat, WINDRAD.lng);
+      const distance = distanceTo(latitude, longitude, WINDRAD.lat, WINDRAD.lng);
+      const diff = Math.round(((bearing - heading + 540) % 360) - 180);
+      const hinweis = Math.abs(diff) < 20 ? '✅ Blickrichtung passt!' :
+                      diff > 0 ? `➡️ ${Math.abs(diff)}° nach rechts drehen` :
+                                 `⬅️ ${Math.abs(diff)}° nach links drehen`;
 
-      // User Marker setzen
+      document.getElementById('status').innerHTML =
+        `📍 GPS ±${Math.round(accuracy)}m<br>` +
+        `📏 Windrad: ${distance}m entfernt<br>` +
+        `🧭 Windrad ist bei: ${Math.round(bearing)}°<br>` +
+        `👁️ Du schaust: ${Math.round(heading)}°<br>` +
+        `${hinweis}`;
+
       if (!userMarker) {
-        userMarker = L.marker([latitude, longitude], { icon: userIcon }).addTo(map);
+        userMarker = L.marker([latitude, longitude], { icon: makeUserIcon(heading) }).addTo(map);
       } else {
         userMarker.setLatLng([latitude, longitude]);
+        userMarker.setIcon(makeUserIcon(heading));
       }
 
-      // Linie zwischen User und Windrad
       if (line) map.removeLayer(line);
       line = L.polyline([[latitude, longitude], [WINDRAD.lat, WINDRAD.lng]],
         { color: 'red', weight: 2 }).addTo(map);
 
-      // Karte zentrieren zwischen beiden Punkten
       map.fitBounds([[latitude, longitude], [WINDRAD.lat, WINDRAD.lng]],
         { padding: [20, 20] });
 
     }, err => {
       document.getElementById('status').innerHTML = `❌ GPS Fehler: ${err.message}`;
-    }, {
-      enableHighAccuracy: true,
-      maximumAge: 0
-    });
+    }, { enableHighAccuracy: true, maximumAge: 0 });
   </script>
 
 </body>
