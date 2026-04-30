@@ -440,11 +440,12 @@
               ? `⛰️ Du: ${Math.round(userElevation)}m${nearestElev} ü.M.<br>`
               : '';
             
-            document.getElementById('status').innerHTML =
+        document.getElementById('status').innerHTML =
           `📍 GPS ±${Math.round(accuracy)}m<br>` +
           `🌀 ${windraeder.length} Windräder | Nächstes: ${nearest.d}m<br>` +
           `🧭 Nächstes bei: ${Math.round(bearing)}° | Du: ${Math.round(heading)}°<br>` +
           `🏗 Nabe: ${hubHeight}m | Rotor: ${rotorDurchmesser}m ⌀<br>` +
+          elevInfo +
           hinweis;
 
         if (!userMarker) {
