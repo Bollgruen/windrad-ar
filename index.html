@@ -314,7 +314,7 @@
       // Rotor (Z-Rotation)
       const rotor = document.createElement('a-entity');
       rotor.setAttribute('animation',
-        'property: rotation; to: 0 0 360; loop: true; dur: 18000; easing: linear');
+        'property: rotation; to: 0 0 360; loop: true; dur: 50000; easing: linear');
 
       [0, 120, 240].forEach(angle => {
         const blattWrapper = document.createElement('a-entity');
@@ -348,6 +348,7 @@
         for (const w of windraeder) {
           let windradElev = 0;
           try { windradElev = await getElevation(w.lat, w.lng); } catch {}
+          w.elevation = windradElev;
           const elevDiff = windradElev - (userElevation ?? windradElev);
           createWindradEntity(w.lat, w.lng, elevDiff, hubHeight, bladeLength);
         }
@@ -431,9 +432,15 @@
         const hinweis = Math.abs(diff) < 20 ? '✅ Blickrichtung passt!' :
                         diff > 0 ? `➡️ ${Math.abs(diff)}° nach rechts` :
                                    `⬅️ ${Math.abs(diff)}° nach links`;
-        const rotorDurchmesser = bladeLength * 2;
-
-        document.getElementById('status').innerHTML =
+            const rotorDurchmesser = bladeLength * 2;
+            
+            const nearestElev = nearest.w.elevation !== undefined
+              ? ` | Windrad: ${Math.round(nearest.w.elevation)}m` : '';
+            const elevInfo = (userElevation !== null)
+              ? `⛰️ Du: ${Math.round(userElevation)}m${nearestElev} ü.M.<br>`
+              : '';
+            
+            document.getElementById('status').innerHTML =
           `📍 GPS ±${Math.round(accuracy)}m<br>` +
           `🌀 ${windraeder.length} Windräder | Nächstes: ${nearest.d}m<br>` +
           `🧭 Nächstes bei: ${Math.round(bearing)}° | Du: ${Math.round(heading)}°<br>` +
