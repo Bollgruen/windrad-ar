@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Gradient Mast Komponente -->
   <script>
     AFRAME.registerComponent('gradient-mast', {
       init: function () {
@@ -25,9 +24,7 @@
         ctx.fillRect(0, 0, 2, 256);
         const texture = new THREE.CanvasTexture(canvas);
         this.el.getObject3D('mesh').material = new THREE.MeshBasicMaterial({
-          map: texture,
-          transparent: true,
-          side: THREE.DoubleSide
+          map: texture, transparent: true, side: THREE.DoubleSide
         });
       }
     });
@@ -36,81 +33,74 @@
   <style>
     body { margin: 0; overflow: hidden; font-family: sans-serif; }
 
-    /* ── KARTEN-SCREEN ── */
     #map-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
     }
     #picker-map { flex: 1; }
     #map-toolbar {
-      background: #1c1c1e;
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      background: #1c1c1e; padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 8px;
     }
     #search-row { display: flex; gap: 8px; }
     #search-input {
-      flex: 1;
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: none;
-      font-size: 15px;
-      background: #2c2c2e;
-      color: white;
+      flex: 1; padding: 8px 12px; border-radius: 8px; border: none;
+      font-size: 15px; background: #2c2c2e; color: white;
     }
     #search-input::placeholder { color: #888; }
     #search-btn {
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: none;
-      background: #007aff;
-      color: white;
-      font-size: 15px;
+      padding: 8px 14px; border-radius: 8px; border: none;
+      background: #007aff; color: white; font-size: 15px;
     }
+
+    /* Einstellungen */
+    .setting-row {
+      display: flex; align-items: center; gap: 8px; color: white; font-size: 13px;
+    }
+    .setting-row label { width: 160px; }
+    .setting-row input[type=range] { flex: 1; }
+    .setting-row span { width: 45px; text-align: right; color: #aaa; }
+
     #coords-display {
-      color: #aaa;
-      font-size: 13px;
-      text-align: center;
-      min-height: 18px;
+      color: #aaa; font-size: 13px; text-align: center; min-height: 18px;
     }
-    #ok-btn {
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      background: #34c759;
-      color: white;
-      font-size: 17px;
-      font-weight: bold;
-      display: none;
+    #plaetze-anzeige {
+      color: #888; font-size: 12px; text-align: center;
     }
+
+    .btn-green {
+      padding: 12px; border-radius: 10px; border: none;
+      background: #34c759; color: white; font-size: 16px; font-weight: bold;
+    }
+    .btn-blue {
+      padding: 10px; border-radius: 10px; border: none;
+      background: #007aff; color: white; font-size: 15px; font-weight: bold;
+    }
+    #btn-weiteres { display: none; }
+    #btn-ar-start { display: none; }
     #hint { color: #888; font-size: 13px; text-align: center; }
 
-    /* ── AR SCREEN ── */
+    /* Marker Liste */
+    #marker-liste {
+      display: flex; flex-wrap: wrap; gap: 4px;
+    }
+    .marker-chip {
+      background: #2c2c2e; color: #aaa; font-size: 11px;
+      padding: 3px 8px; border-radius: 12px;
+    }
+
+    /* AR */
     #minimap {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      width: 180px;
-      height: 180px;
-      border: 2px solid white;
-      border-radius: 8px;
-      overflow: hidden;
-      z-index: 9999;
+      position: fixed; top: 10px; right: 10px;
+      width: 180px; height: 180px;
+      border: 2px solid white; border-radius: 8px;
+      overflow: hidden; z-index: 9999;
     }
     #status {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      z-index: 9999;
+      position: fixed; bottom: 10px; left: 10px;
+      background: rgba(0,0,0,0.6); color: white;
+      padding: 8px 12px; border-radius: 8px;
+      font-size: 13px; z-index: 9999;
     }
   </style>
 </head>
@@ -120,13 +110,32 @@
   <div id="map-screen">
     <div id="picker-map"></div>
     <div id="map-toolbar">
+
       <div id="search-row">
-        <input id="search-input" type="text" placeholder="Ort suchen z.B. Schäftlarn...">
+        <input id="search-input" type="text" placeholder="Ort suchen...">
         <button id="search-btn">🔍</button>
       </div>
-      <div id="coords-display">Tippe auf die Karte um das Windrad zu platzieren</div>
-      <button id="ok-btn">✅ AR starten</button>
+
+      <!-- Einstellungen -->
+      <div class="setting-row">
+        <label>🏗 Nabenhöhe</label>
+        <input type="range" id="nabenhoehe" min="50" max="250" value="130" step="5">
+        <span id="nabenhoehe-val">130m</span>
+      </div>
+      <div class="setting-row">
+        <label>💨 Rotorblatt-Länge</label>
+        <input type="range" id="blattlaenge" min="20" max="120" value="75" step="5">
+        <span id="blattlaenge-val">75m</span>
+      </div>
+
+      <div id="coords-display">Tippe auf die Karte um ein Windrad zu platzieren</div>
+      <div id="marker-liste"></div>
+      <div id="plaetze-anzeige"></div>
+
+      <button class="btn-blue" id="btn-weiteres">➕ Weiteres Windrad platzieren</button>
+      <button class="btn-green" id="btn-ar-start">✅ AR starten</button>
       <div id="hint">Zum Zoomen: zwei Finger</div>
+
     </div>
   </div>
 
@@ -137,47 +146,34 @@
       arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
     >
       <a-camera gps-camera rotation-reader></a-camera>
-      <a-entity id="windrad-entity">
-
-        <!-- Mast mit Gradient -->
-        <a-cylinder gradient-mast radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
-
-        <!-- Gondel + Rotor (dreht um Y-Achse, 1 Umdrehung/10s) -->
-        <a-entity position="0 178 0"
-          animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
-
-          <!-- Gondel -->
-          <a-box color="gray" width="10" height="6" depth="6" position="0 0 0"></a-box>
-
-          <!-- Rotor (dreht um Z-Achse, 1 Umdrehung/6s) -->
-          <a-entity
-            animation="property: rotation; to: 0 0 360; loop: true; dur: 6000; easing: linear">
-
-            <a-entity rotation="0 0 0">
-              <a-sphere color="white" radius="1" scale="2.5 43 1.2" position="0 43 0"></a-sphere>
-            </a-entity>
-            <a-entity rotation="0 0 120">
-              <a-sphere color="white" radius="1" scale="2.5 43 1.2" position="0 43 0"></a-sphere>
-            </a-entity>
-            <a-entity rotation="0 0 240">
-              <a-sphere color="white" radius="1" scale="2.5 43 1.2" position="0 43 0"></a-sphere>
-            </a-entity>
-
-          </a-entity>
-        </a-entity>
-
-      </a-entity>
     </a-scene>
     <div id="minimap"></div>
     <div id="status">📍 GPS: warte...</div>
   </div>
 
   <script>
-    let WINDRAD = null;
-    let pickerMarker = null;
-    let windradElevation = null;
+    const MAX_WINDRAEDER = 5;
+    let windraeder = [];        // [{lat, lng}, ...]
+    let pickerMarkers = [];     // Leaflet Marker
+    let currentMarker = null;   // aktuell gesetzter (noch nicht bestätigter) Marker
+    let currentLatLng = null;
     let userElevation = null;
-    let windradPlaced = false;
+
+    // ── EINSTELLUNGEN ────────────────────────────────
+    const nahbenEl = document.getElementById('nabenhoehe');
+    const blattEl  = document.getElementById('blattlaenge');
+    const nahbenVal = document.getElementById('nabenhoehe-val');
+    const blattVal  = document.getElementById('blattlaenge-val');
+
+    nahbenEl.addEventListener('input', () => nahbenVal.textContent = nahbenEl.value + 'm');
+    blattEl.addEventListener('input',  () => blattVal.textContent  = blattEl.value  + 'm');
+
+    function getSettings() {
+      return {
+        hubHeight:   parseInt(nahbenEl.value),
+        bladeLength: parseInt(blattEl.value)
+      };
+    }
 
     // ── PICKER MAP ───────────────────────────────────
     const pickerMap = L.map('picker-map').setView([47.97, 11.45], 13);
@@ -189,13 +185,61 @@
 
     pickerMap.on('click', e => {
       const { lat, lng } = e.latlng;
-      WINDRAD = { lat, lng };
-      if (pickerMarker) pickerMarker.setLatLng([lat, lng]);
-      else pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
+      currentLatLng = { lat, lng };
+
+      if (currentMarker) currentMarker.setLatLng([lat, lng]);
+      else currentMarker = L.marker([lat, lng], {
+        icon: L.divIcon({ html: '📍', iconSize: [24,24], className: '' })
+      }).addTo(pickerMap);
+
       document.getElementById('coords-display').textContent =
-        `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      document.getElementById('ok-btn').style.display = 'block';
-      document.getElementById('hint').style.display = 'none';
+        `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)} — bestätigen:`;
+      document.getElementById('btn-ar-start').style.display = 'block';
+
+      // Ersten Marker bestätigen via AR-Start oder Weiteres
+      updateButtons();
+    });
+
+    function updateButtons() {
+      const count = windraeder.length;
+      const hasCurrent = currentLatLng !== null;
+
+      // "Weiteres" nur zeigen wenn aktueller Marker gesetzt UND noch Platz
+      document.getElementById('btn-weiteres').style.display =
+        hasCurrent && count < MAX_WINDRAEDER - 1 ? 'block' : 'none';
+
+      document.getElementById('btn-ar-start').style.display =
+        hasCurrent ? 'block' : 'none';
+
+      document.getElementById('plaetze-anzeige').textContent =
+        count > 0 ? `${count} Windrad${count > 1 ? 'räder' : ''} bereits platziert` : '';
+
+      // Marker-Chips aktualisieren
+      const liste = document.getElementById('marker-liste');
+      liste.innerHTML = windraeder.map((w, i) =>
+        `<span class="marker-chip">🌀 ${i+1}: ${w.lat.toFixed(4)}, ${w.lng.toFixed(4)}</span>`
+      ).join('');
+    }
+
+    // "Weiteres Windrad" → aktuellen Marker bestätigen, neuen setzen
+    document.getElementById('btn-weiteres').addEventListener('click', () => {
+      if (!currentLatLng) return;
+      windraeder.push(currentLatLng);
+
+      // Bestätigter Marker bekommt anderes Icon
+      if (currentMarker) {
+        currentMarker.setIcon(L.divIcon({
+          html: `🌀<span style="font-size:10px;color:white">${windraeder.length}</span>`,
+          iconSize: [28,28], className: ''
+        }));
+        pickerMarkers.push(currentMarker);
+        currentMarker = null;
+      }
+
+      currentLatLng = null;
+      document.getElementById('coords-display').textContent =
+        'Tippe auf die Karte für das nächste Windrad';
+      updateButtons();
     });
 
     // Suche
@@ -211,7 +255,7 @@
       if (e.key === 'Enter') document.getElementById('search-btn').click();
     });
 
-    // ── ELEVATION ───────────────────────────────────
+    // ── ELEVATION ────────────────────────────────────
     async function getElevation(lat, lng) {
       const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
       const data = await res.json();
@@ -220,43 +264,97 @@
       return elev;
     }
 
-    function placeWindrad() {
-      if (windradPlaced) return;
-      if (windradElevation === null || userElevation === null) return;
-      const elevationDiff = windradElevation - userElevation;
+    // ── WINDRAD ENTITY ERSTELLEN ─────────────────────
+    function createWindradEntity(lat, lng, elevDiff, hubHeight, bladeLength) {
       const scene = document.querySelector('a-scene');
-      const doPlace = () => {
-        document.querySelector('#windrad-entity').setAttribute(
-          'gps-entity-place',
-          `latitude: ${WINDRAD.lat}; longitude: ${WINDRAD.lng}; altitude: ${elevationDiff}`
-        );
-        windradPlaced = true;
-      };
-      if (scene.hasLoaded) doPlace();
-      else scene.addEventListener('loaded', doPlace);
+
+      const root = document.createElement('a-entity');
+      root.setAttribute('gps-entity-place',
+        `latitude: ${lat}; longitude: ${lng}; altitude: ${elevDiff}`);
+
+      // Mast
+      const mast = document.createElement('a-cylinder');
+      mast.setAttribute('gradient-mast', '');
+      mast.setAttribute('radius', '2.5');
+      mast.setAttribute('height', hubHeight);
+      mast.setAttribute('position', `0 ${hubHeight / 2} 0`);
+      root.appendChild(mast);
+
+      // Gondel + Rotor Wrapper
+      const gondelWrapper = document.createElement('a-entity');
+      gondelWrapper.setAttribute('position', `0 ${hubHeight} 0`);
+      gondelWrapper.setAttribute('animation',
+        'property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear');
+
+      // Gondel
+      const gondel = document.createElement('a-box');
+      gondel.setAttribute('color', 'gray');
+      gondel.setAttribute('width', '10');
+      gondel.setAttribute('height', '6');
+      gondel.setAttribute('depth', '6');
+      gondel.setAttribute('position', '0 0 0');
+      gondelWrapper.appendChild(gondel);
+
+      // Rotor Spinner
+      const rotor = document.createElement('a-entity');
+      rotor.setAttribute('animation',
+        'property: rotation; to: 0 0 360; loop: true; dur: 6000; easing: linear');
+
+      [0, 120, 240].forEach(angle => {
+        const blattWrapper = document.createElement('a-entity');
+        blattWrapper.setAttribute('rotation', `0 0 ${angle}`);
+        const blatt = document.createElement('a-sphere');
+        blatt.setAttribute('color', 'white');
+        blatt.setAttribute('radius', '1');
+        blatt.setAttribute('scale', `2.5 ${bladeLength / 2} 1.2`);
+        blatt.setAttribute('position', `0 ${bladeLength / 2} 0`);
+        blattWrapper.appendChild(blatt);
+        rotor.appendChild(blattWrapper);
+      });
+
+      gondelWrapper.appendChild(rotor);
+      root.appendChild(gondelWrapper);
+      scene.appendChild(root);
     }
 
-    // ── OK → AR STARTEN ─────────────────────────────
-    document.getElementById('ok-btn').addEventListener('click', async () => {
+    // ── AR STARTEN ───────────────────────────────────
+    document.getElementById('btn-ar-start').addEventListener('click', async () => {
+      if (!currentLatLng) return;
+
+      // Letzten Marker auch noch hinzufügen
+      windraeder.push(currentLatLng);
+
+      const { hubHeight, bladeLength } = getSettings();
+
       document.getElementById('map-screen').style.display = 'none';
       document.getElementById('ar-screen').style.display = 'block';
 
-      try {
-        windradElevation = await getElevation(WINDRAD.lat, WINDRAD.lng);
-      } catch {
-        windradElevation = 0;
-      }
-      placeWindrad();
+      // Für jedes Windrad: Elevation holen und Entity erstellen
+      const scene = document.querySelector('a-scene');
+      const doCreate = async () => {
+        for (const w of windraeder) {
+          let windradElev = 0;
+          try { windradElev = await getElevation(w.lat, w.lng); } catch {}
+          const elevDiff = windradElev - (userElevation ?? windradElev);
+          createWindradEntity(w.lat, w.lng, elevDiff, hubHeight, bladeLength);
+        }
+      };
+      if (scene.hasLoaded) doCreate();
+      else scene.addEventListener('loaded', doCreate);
 
-      // ── MINIMAP ─────────────────────────────────
+      // ── MINIMAP ──────────────────────────────────
       const map = L.map('minimap', {
         zoomControl: false, attributionControl: false,
         dragging: false, scrollWheelZoom: false,
         doubleClickZoom: false, touchZoom: false
-      }).setView([WINDRAD.lat, WINDRAD.lng], 14);
+      }).setView([windraeder[0].lat, windraeder[0].lng], 14);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-      const windradIcon = L.divIcon({ html: '🌀', iconSize: [24,24], className: '' });
-      L.marker([WINDRAD.lat, WINDRAD.lng], { icon: windradIcon }).addTo(map);
+
+      windraeder.forEach(w => {
+        L.marker([w.lat, w.lng], {
+          icon: L.divIcon({ html: '🌀', iconSize: [24,24], className: '' })
+        }).addTo(map);
+      });
 
       let userMarker = null, line = null, heading = 0;
 
@@ -306,32 +404,28 @@
         const { latitude, longitude, accuracy, altitude } = pos.coords;
 
         if (userElevation === null) {
-          if (altitude !== null) {
-            userElevation = altitude;
-            placeWindrad();
-          } else {
-            getElevation(latitude, longitude).then(elev => {
-              userElevation = elev;
-              placeWindrad();
-            });
-          }
+          if (altitude !== null) userElevation = altitude;
+          else getElevation(latitude, longitude).then(e => userElevation = e);
         }
 
-        const bearing = bearingTo(latitude, longitude, WINDRAD.lat, WINDRAD.lng);
-        const distance = distanceTo(latitude, longitude, WINDRAD.lat, WINDRAD.lng);
+        // Nächstes Windrad für Status
+        const nearest = windraeder.reduce((best, w) => {
+          const d = distanceTo(latitude, longitude, w.lat, w.lng);
+          return d < best.d ? { w, d } : best;
+        }, { w: windraeder[0], d: Infinity });
+
+        const bearing = bearingTo(latitude, longitude, nearest.w.lat, nearest.w.lng);
         const diff = Math.round(((bearing - heading + 540) % 360) - 180);
         const hinweis = Math.abs(diff) < 20 ? '✅ Blickrichtung passt!' :
                         diff > 0 ? `➡️ ${Math.abs(diff)}° nach rechts` :
                                    `⬅️ ${Math.abs(diff)}° nach links`;
-        const elevDiff = windradElevation !== null && userElevation !== null
-          ? `⛰️ Windrad: ${Math.round(windradElevation)}m | Du: ${Math.round(userElevation)}m | Diff: ${Math.round(windradElevation - userElevation)}m<br>`
-          : '';
 
         document.getElementById('status').innerHTML =
           `📍 GPS ±${Math.round(accuracy)}m<br>` +
-          `📏 Windrad: ${distance}m entfernt<br>` +
-          `🧭 Windrad bei: ${Math.round(bearing)}° | Du: ${Math.round(heading)}°<br>` +
-          elevDiff + hinweis;
+          `🌀 ${windraeder.length} Windräder | Nächstes: ${nearest.d}m<br>` +
+          `🧭 Nächstes bei: ${Math.round(bearing)}° | Du: ${Math.round(heading)}°<br>` +
+          `🏗 Nabe: ${hubHeight}m | Blatt: ${bladeLength}m<br>` +
+          hinweis;
 
         if (!userMarker) {
           userMarker = L.marker([latitude, longitude], { icon: makeUserIcon(heading) }).addTo(map);
@@ -340,11 +434,12 @@
           userMarker.setIcon(makeUserIcon(heading));
         }
 
+        // Alle Windräder in Bounds
+        const bounds = [[latitude, longitude], ...windraeder.map(w => [w.lat, w.lng])];
         if (line) map.removeLayer(line);
-        line = L.polyline([[latitude, longitude], [WINDRAD.lat, WINDRAD.lng]],
+        line = L.polyline([[latitude, longitude], [nearest.w.lat, nearest.w.lng]],
           { color: 'red', weight: 2 }).addTo(map);
-        map.fitBounds([[latitude, longitude], [WINDRAD.lat, WINDRAD.lng]],
-          { padding: [20,20] });
+        map.fitBounds(bounds, { padding: [20,20] });
 
       }, err => {
         document.getElementById('status').innerHTML = `❌ GPS Fehler: ${err.message}`;
