@@ -112,9 +112,35 @@
     >
       <a-camera gps-camera rotation-reader></a-camera>
       <a-entity id="windrad-entity">
-      <!-- Turm -->
-      <a-cylinder color="white" radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
+        
+      <!-- Gradient-Textur für Mast -->
+      <script>
+        AFRAME.registerComponent('gradient-mast', {
+          init: function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 256, 0, 0);
+            grad.addColorStop(0.0, 'rgba(255,255,255,0.0)');
+            grad.addColorStop(0.3, 'rgba(255,255,255,0.3)');
+            grad.addColorStop(0.5, 'rgba(255,255,255,1.0)');
+            grad.addColorStop(1.0, 'rgba(255,255,255,1.0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 2, 256);
+            const texture = new THREE.CanvasTexture(canvas);
+            this.el.getObject3D('mesh').material = new THREE.MeshBasicMaterial({
+              map: texture,
+              transparent: true,
+              side: THREE.DoubleSide
+            });
+          }
+        });
+      </script>
       
+      <!-- Mast -->
+      <a-cylinder gradient-mast radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
+
       <!-- Gondel + Rotor zusammen (dreht um Y-Achse, 1 Umdrehung/10s) -->
       <a-entity position="0 178 0"
         animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
