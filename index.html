@@ -53,13 +53,13 @@
       background: #007aff; color: white; font-size: 15px;
     }
 
-    /* Einstellungen */
     .setting-row {
-      display: flex; align-items: center; gap: 8px; color: white; font-size: 13px;
+      display: flex; align-items: center; gap: 8px;
+      color: white; font-size: 13px;
     }
     .setting-row label { width: 160px; }
     .setting-row input[type=range] { flex: 1; }
-    .setting-row span { width: 45px; text-align: right; color: #aaa; }
+    .setting-row span { width: 50px; text-align: right; color: #aaa; }
 
     #coords-display {
       color: #aaa; font-size: 13px; text-align: center; min-height: 18px;
@@ -67,7 +67,6 @@
     #plaetze-anzeige {
       color: #888; font-size: 12px; text-align: center;
     }
-
     .btn-green {
       padding: 12px; border-radius: 10px; border: none;
       background: #34c759; color: white; font-size: 16px; font-weight: bold;
@@ -80,10 +79,7 @@
     #btn-ar-start { display: none; }
     #hint { color: #888; font-size: 13px; text-align: center; }
 
-    /* Marker Liste */
-    #marker-liste {
-      display: flex; flex-wrap: wrap; gap: 4px;
-    }
+    #marker-liste { display: flex; flex-wrap: wrap; gap: 4px; }
     .marker-chip {
       background: #2c2c2e; color: #aaa; font-size: 11px;
       padding: 3px 8px; border-radius: 12px;
@@ -102,9 +98,28 @@
       padding: 8px 12px; border-radius: 8px;
       font-size: 13px; z-index: 9999;
     }
+
+    /* Querformat-Warnung */
+    #orientation-warning {
+      display: none;
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(0,0,0,0.85);
+      color: white; font-size: 18px;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px; text-align: center; padding: 40px;
+    }
+    #orientation-warning.visible { display: flex; }
   </style>
 </head>
 <body>
+
+  <!-- QUERFORMAT WARNUNG -->
+  <div id="orientation-warning">
+    <div style="font-size:48px">📱</div>
+    <div>Bitte Gerät ins <strong>Hochformat</strong> drehen</div>
+    <div style="font-size:13px; color:#aaa">Im Querformat ist der Kompass um 90° versetzt und das Windrad erscheint an der falschen Stelle</div>
+  </div>
 
   <!-- KARTEN-SCREEN -->
   <div id="map-screen">
@@ -116,16 +131,15 @@
         <button id="search-btn">🔍</button>
       </div>
 
-      <!-- Einstellungen -->
       <div class="setting-row">
         <label>🏗 Nabenhöhe</label>
         <input type="range" id="nabenhoehe" min="50" max="250" value="130" step="5">
         <span id="nabenhoehe-val">130m</span>
       </div>
       <div class="setting-row">
-        <label>💨 Rotorblatt-Länge</label>
-        <input type="range" id="blattlaenge" min="20" max="120" value="75" step="5">
-        <span id="blattlaenge-val">75m</span>
+        <label>💨 Rotordurchmesser</label>
+        <input type="range" id="blattlaenge" min="40" max="240" value="150" step="10">
+        <span id="blattlaenge-val">150m</span>
       </div>
 
       <div id="coords-display">Tippe auf die Karte um ein Windrad zu platzieren</div>
@@ -153,15 +167,26 @@
 
   <script>
     const MAX_WINDRAEDER = 5;
-    let windraeder = [];        // [{lat, lng}, ...]
-    let pickerMarkers = [];     // Leaflet Marker
-    let currentMarker = null;   // aktuell gesetzter (noch nicht bestätigter) Marker
+    let windraeder = [];
+    let pickerMarkers = [];
+    let currentMarker = null;
     let currentLatLng = null;
     let userElevation = null;
 
+    // ── QUERFORMAT ERKENNUNG ─────────────────────────
+    function checkOrientation() {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const warning = document.getElementById('orientation-warning');
+      if (isLandscape) warning.classList.add('visible');
+      else warning.classList.remove('visible');
+    }
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    checkOrientation();
+
     // ── EINSTELLUNGEN ────────────────────────────────
-    const nahbenEl = document.getElementById('nabenhoehe');
-    const blattEl  = document.getElementById('blattlaenge');
+    const nahbenEl  = document.getElementById('nabenhoehe');
+    const blattEl   = document.getElementById('blattlaenge');
     const nahbenVal = document.getElementById('nabenhoehe-val');
     const blattVal  = document.getElementById('blattlaenge-val');
 
@@ -171,7 +196,7 @@
     function getSettings() {
       return {
         hubHeight:   parseInt(nahbenEl.value),
-        bladeLength: parseInt(blattEl.value)
+        bladeLength: parseInt(blattEl.value) / 2  // Durchmesser → Radius
       };
     }
 
@@ -193,10 +218,7 @@
       }).addTo(pickerMap);
 
       document.getElementById('coords-display').textContent =
-        `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)} — bestätigen:`;
-      document.getElementById('btn-ar-start').style.display = 'block';
-
-      // Ersten Marker bestätigen via AR-Start oder Weiteres
+        `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       updateButtons();
     });
 
@@ -204,29 +226,23 @@
       const count = windraeder.length;
       const hasCurrent = currentLatLng !== null;
 
-      // "Weiteres" nur zeigen wenn aktueller Marker gesetzt UND noch Platz
       document.getElementById('btn-weiteres').style.display =
         hasCurrent && count < MAX_WINDRAEDER - 1 ? 'block' : 'none';
-
       document.getElementById('btn-ar-start').style.display =
         hasCurrent ? 'block' : 'none';
-
       document.getElementById('plaetze-anzeige').textContent =
         count > 0 ? `${count} Windrad${count > 1 ? 'räder' : ''} bereits platziert` : '';
 
-      // Marker-Chips aktualisieren
       const liste = document.getElementById('marker-liste');
       liste.innerHTML = windraeder.map((w, i) =>
         `<span class="marker-chip">🌀 ${i+1}: ${w.lat.toFixed(4)}, ${w.lng.toFixed(4)}</span>`
       ).join('');
     }
 
-    // "Weiteres Windrad" → aktuellen Marker bestätigen, neuen setzen
     document.getElementById('btn-weiteres').addEventListener('click', () => {
       if (!currentLatLng) return;
       windraeder.push(currentLatLng);
 
-      // Bestätigter Marker bekommt anderes Icon
       if (currentMarker) {
         currentMarker.setIcon(L.divIcon({
           html: `🌀<span style="font-size:10px;color:white">${windraeder.length}</span>`,
@@ -280,7 +296,7 @@
       mast.setAttribute('position', `0 ${hubHeight / 2} 0`);
       root.appendChild(mast);
 
-      // Gondel + Rotor Wrapper
+      // Gondel + Rotor Wrapper (Y-Rotation)
       const gondelWrapper = document.createElement('a-entity');
       gondelWrapper.setAttribute('position', `0 ${hubHeight} 0`);
       gondelWrapper.setAttribute('animation',
@@ -295,7 +311,7 @@
       gondel.setAttribute('position', '0 0 0');
       gondelWrapper.appendChild(gondel);
 
-      // Rotor Spinner
+      // Rotor (Z-Rotation)
       const rotor = document.createElement('a-entity');
       rotor.setAttribute('animation',
         'property: rotation; to: 0 0 360; loop: true; dur: 18000; easing: linear');
@@ -320,8 +336,6 @@
     // ── AR STARTEN ───────────────────────────────────
     document.getElementById('btn-ar-start').addEventListener('click', async () => {
       if (!currentLatLng) return;
-
-      // Letzten Marker auch noch hinzufügen
       windraeder.push(currentLatLng);
 
       const { hubHeight, bladeLength } = getSettings();
@@ -329,7 +343,6 @@
       document.getElementById('map-screen').style.display = 'none';
       document.getElementById('ar-screen').style.display = 'block';
 
-      // Für jedes Windrad: Elevation holen und Entity erstellen
       const scene = document.querySelector('a-scene');
       const doCreate = async () => {
         for (const w of windraeder) {
@@ -408,7 +421,6 @@
           else getElevation(latitude, longitude).then(e => userElevation = e);
         }
 
-        // Nächstes Windrad für Status
         const nearest = windraeder.reduce((best, w) => {
           const d = distanceTo(latitude, longitude, w.lat, w.lng);
           return d < best.d ? { w, d } : best;
@@ -419,12 +431,13 @@
         const hinweis = Math.abs(diff) < 20 ? '✅ Blickrichtung passt!' :
                         diff > 0 ? `➡️ ${Math.abs(diff)}° nach rechts` :
                                    `⬅️ ${Math.abs(diff)}° nach links`;
+        const rotorDurchmesser = bladeLength * 2;
 
         document.getElementById('status').innerHTML =
           `📍 GPS ±${Math.round(accuracy)}m<br>` +
           `🌀 ${windraeder.length} Windräder | Nächstes: ${nearest.d}m<br>` +
           `🧭 Nächstes bei: ${Math.round(bearing)}° | Du: ${Math.round(heading)}°<br>` +
-          `🏗 Nabe: ${hubHeight}m | Blatt: ${bladeLength}m<br>` +
+          `🏗 Nabe: ${hubHeight}m | Rotor: ${rotorDurchmesser}m ⌀<br>` +
           hinweis;
 
         if (!userMarker) {
@@ -434,11 +447,10 @@
           userMarker.setIcon(makeUserIcon(heading));
         }
 
-        // Alle Windräder in Bounds
-        const bounds = [[latitude, longitude], ...windraeder.map(w => [w.lat, w.lng])];
         if (line) map.removeLayer(line);
         line = L.polyline([[latitude, longitude], [nearest.w.lat, nearest.w.lng]],
           { color: 'red', weight: 2 }).addTo(map);
+        const bounds = [[latitude, longitude], ...windraeder.map(w => [w.lat, w.lng])];
         map.fitBounds(bounds, { padding: [20,20] });
 
       }, err => {
