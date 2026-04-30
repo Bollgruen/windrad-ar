@@ -112,33 +112,33 @@
     >
       <a-camera gps-camera rotation-reader></a-camera>
       <a-entity id="windrad-entity">
-
-        <!-- Turm -->
-        <a-cylinder color="white" radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
-
+      <!-- Turm -->
+      <a-cylinder color="white" radius="2.5" height="175" position="0 87.5 0"></a-cylinder>
+      
+      <!-- Gondel + Rotor zusammen (dreht um Y-Achse, 1 Umdrehung/10s) -->
+      <a-entity position="0 178 0"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+      
         <!-- Gondel -->
-        <a-box color="gray" width="10" height="6" depth="6" position="0 178 0"></a-box>
-
-        <!-- Rotor: Wrapper am Nabenmittelpunkt -->
-        <a-entity position="0 178 0">
-
-          <!-- Blatt 1: gerade nach oben -->
+        <a-box color="gray" width="10" height="6" depth="6" position="0 0 0"></a-box>
+      
+        <!-- Rotor (dreht um Z-Achse, 1 Umdrehung/6s) -->
+        <a-entity
+          animation="property: rotation; to: 0 0 360; loop: true; dur: 6000; easing: linear">
+      
           <a-entity rotation="0 0 0">
-            <a-box color="white" width="2" height="86" depth="0.8" position="0 43 0"></a-box>
+            <a-sphere color="white" radius="1" scale="2.5 43 1.2" position="0 43 0"></a-sphere>
           </a-entity>
-
-          <!-- Blatt 2: 120° gedreht -->
           <a-entity rotation="0 0 120">
-            <a-box color="white" width="2" height="86" depth="0.8" position="0 43 0"></a-box>
+            <a-sphere color="white" radius="1" scale="2.5 43 1.2" position="0 43 0"></a-sphere>
           </a-entity>
-
-          <!-- Blatt 3: 240° gedreht -->
           <a-entity rotation="0 0 240">
-            <a-box color="white" width="2" height="86" depth="0.8" position="0 43 0"></a-box>
+            <a-sphere color="white" radius="1" scale="2.5 43 1.2" position="0 43 0"></a-sphere>
           </a-entity>
-
+      
         </a-entity>
       </a-entity>
+    
     </a-scene>
     <div id="minimap"></div>
     <div id="status">📍 GPS: warte...</div>
@@ -184,11 +184,13 @@
     });
 
     // ── ELEVATION ───────────────────────────────────
-    async function getElevation(lat, lng) {
-      const res = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
-      const data = await res.json();
-      return data.results[0].elevation;
-    }
+async function getElevation(lat, lng) {
+  const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
+  const data = await res.json();
+  const elev = data.elevation?.[0];
+  if (elev === undefined || elev === null) throw new Error('Keine Elevation');
+  return elev;
+}
 
     function placeWindrad() {
       if (windradPlaced) return;
