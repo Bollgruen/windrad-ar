@@ -300,7 +300,7 @@
       const gondelWrapper = document.createElement('a-entity');
       gondelWrapper.setAttribute('position', `0 ${hubHeight} 0`);
       gondelWrapper.setAttribute('animation',
-        'property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear');
+        'property: rotation; to: 0 360 0; loop: true; dur: 50000; easing: linear');
 
       // Gondel
       const gondel = document.createElement('a-box');
@@ -314,7 +314,7 @@
       // Rotor (Z-Rotation)
       const rotor = document.createElement('a-entity');
       rotor.setAttribute('animation',
-        'property: rotation; to: 0 0 360; loop: true; dur: 50000; easing: linear');
+        'property: rotation; to: 0 0 360; loop: true; dur: 10000; easing: linear');
 
       [0, 120, 240].forEach(angle => {
         const blattWrapper = document.createElement('a-entity');
